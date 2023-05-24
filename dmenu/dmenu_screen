@@ -1,0 +1,19 @@
+#!/bin/bash
+
+function _dmenu_screen() {
+  local source="$HOME/.config/i3/layout"
+
+  if [[ ! -d $source ]]; then
+    notify-send "No layout directory"
+    exit 1
+  fi
+
+  local selected=$(find $source/* ! -name . -prune -type f -exec basename {} \; | dmenu)
+  local layout="$source/$selected"
+
+  [[ -f $layout ]] && [[ -x $layout ]] \
+    && $layout \
+    || notify-send "Invalid layout"
+}
+
+_dmenu_screen

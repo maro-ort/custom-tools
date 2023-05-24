@@ -1,0 +1,64 @@
+#!/bin/bash
+source "$(dirname $0)/shared"
+
+function _mpd() {
+  mpc | grep -oP '^\[\K[^\]]+' || <<< "stopped"
+  mpc | head -n 1
+}
+
+function _spotify() {
+  local output=$(dbus-send \
+      --print-reply \
+      --dest=org.mpris.MediaPlayer2.spotify \
+      /org/mpris/MediaPlayer2 \
+      org.freedesktop.DBus.Properties.GetAll \
+      string:"org.mpris.MediaPlayer2.Player"\
+    )
+  local status=$(echo "$output" | grep -A1 "PlaybackStatus" | tail -n 1 | cut -d '"' -f 2)
+  local album=$(echo "$output" | grep -A1 -E "xesam:album\W" | tail -n 1 | cut -d '"' -f 2)
+  local song=$(echo "$output" | grep -A1 "xesam:title" | tail -n 1 | cut -d '"' -f 2)
+
+  echo $status | tr '[:upper:]' '[:lower:]'
+  echo "$album - $song"
+}
+
+function _output() {
+  local status=$1
+  local title="$(sed -e 's/&/&amp;/' <<< "$2")"
+  local color=${COLORS["good"]}
+  local icon=$([[ "$status" == "paused" ]] \
+    && _icon "pause" \
+    || ([[ "$status" == "playing" ]] \
+      && _icon "play" \
+      || _icon "stop"
+    )
+  )
+  echo "<small>$title $icon</small>"
+}
+
+
+function _musicplayer() {
+  local status=""
+  local title=""
+  local priority=("spotify" "mpd")
+  local available_players=$(playerctl -l)
+
+  local current_player=""
+  for player in ${priority[@]}; do
+    if grep "${player}" <<< $available_players >/dev/null; then
+      current_player=$player
+      break
+    fi 
+  done
+
+  case $current_player in
+    "spotify") { read -r status; read -r title; } <<< $(_spotify);;
+    "mpd") { read -r status; read -r title; } <<< $(_mpd);;
+    *) status="stopped"; title="";;
+  esac
+
+  _output "$status" "$title"
+}
+
+
+_musicplayer

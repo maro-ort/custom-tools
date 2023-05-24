@@ -1,0 +1,15 @@
+#!/bin/bash
+source "$(dirname $0)/shared"
+
+function _dmenu_wallpaper() {
+  readonly source="$HOME/wallpapers"
+  readonly feh_file="$CONFIG_DIR/.fehbg"
+  readonly selected=$(find $source/* ! -name . -prune -type d -exec basename {} \; | dmenu)
+
+  if [ ! -z $selected ]; then
+    sed -i "/^readonly source=/c\\readonly source=$selected" $feh_file
+    $feh_file
+  fi
+}
+
+_dmenu_wallpaper

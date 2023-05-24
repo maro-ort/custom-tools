@@ -1,0 +1,37 @@
+#!/bin/bash
+
+function _dmenu_bluetooth() {
+  readonly icon=""
+  readonly devices_connected=$(bluetoothctl devices Connected | awk -F ' ' '{print $3"|"$2}')
+  readonly devices_all=$(bluetoothctl devices | awk -F ' ' '{print $3"|"$2}' | sort)
+  local devices_parsed=()
+
+  for device in ${devices_all[@]}; do
+    for conn_device in ${devices_connected[@]}; do
+      if [ "$conn_device" == "$device" ]; then
+        device+="|Connected"
+        break
+      fi
+    done
+    devices_parsed+=("$device")
+  done
+
+  local dmenu_input=()
+  for device in ${devices_parsed[@]}; do
+    dmenu_input+=("$(echo $device | awk -v icon="$icon" -F '|' '{if($3!="") print icon $1; else print $1}')")
+  done
+
+  local selected=$(printf "%s\n" "${dmenu_input[@]}" | dmenu)
+  if [ ! -z "$selected" ]; then
+    local device_mac=$(awk -F'|' -v value="$selected" '$1 == value {print $2}' <<< "$devices_all")
+    local action="connect"
+    if [[ "$selected" == "$icon"* ]]; then
+      action="disconnect"
+    fi
+    bluetoothctl "$action" "$device_mac"
+  fi
+
+}
+
+_dmenu_bluetooth
+
