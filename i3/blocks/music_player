@@ -2,8 +2,12 @@
 source "$(dirname $0)/shared"
 
 function _mpd() {
-  mpc | grep -oP '^\[\K[^\]]+' || <<< "stopped"
-  mpc | head -n 1
+  local status=$(mpc | grep -oP '^\[\K[^\]]+')
+  local title=""
+  if [[ -z $status ]]; then status="stopped"; fi
+  if [[ "$status" != "stopped" ]]; then title=$(mpc | head -n 1); fi
+  echo $status
+  echo $title
 }
 
 function _spotify() {
@@ -24,8 +28,8 @@ function _spotify() {
 
 function _output() {
   local status=$1
-  local title="$(sed -e 's/&/&amp;/' <<< "$2")"
-  local color=${COLORS["good"]}
+  local title=$2
+  local color=${I3STATUS_COLORS["good"]}
   local icon=$([[ "$status" == "paused" ]] \
     && _icon "pause" \
     || ([[ "$status" == "playing" ]] \
@@ -33,9 +37,11 @@ function _output() {
       || _icon "stop"
     )
   )
-  echo "<small>$title $icon</small>"
-}
 
+  [[ -z "$title" ]] \
+    && echo "<small>$icon</small>" \
+    || echo "<small>$title $icon</small>"
+}
 
 function _musicplayer() {
   local status=""
